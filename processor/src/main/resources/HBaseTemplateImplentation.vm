@@ -1,0 +1,82 @@
+package ${tc.getPackageName()};
+
+import com.coupang.pz.hbase.extension.HBaseTemplate;
+import com.coupang.pz.hbase.extension.scheme.HColumnDef;
+import com.coupang.pz.hbase.extension.annotation.HColumn;
+import com.coupang.pz.hbase.extension.connection.HBaseConnectionFactory;
+import com.coupang.pz.hbase.extension.util.ByteUtils;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.common.collect.Lists;
+import org.apache.hadoop.hbase.client.Get;
+import java.io.IOException;
+import java.util.List;
+
+#set( $templateClassName = $tc.getRowName() + 'Template')
+public class $templateClassName extends HBaseTemplate<$tc.getRowName(), $rc.getTypeName()> {
+    private final List<HColumnDef> columns = initColumnDef();
+
+    private static List<HColumnDef> initColumnDef() {
+        List<HColumnDef> columns = Lists.newArrayList();
+        #foreach ($cc in $ccs)
+        columns.add(new HColumnDef("${cc.getFamily()}", "${cc.getQualifier()}"));
+        #end
+        return columns;
+    }
+
+    public $templateClassName(HBaseConnectionFactory connectionFactory) {
+        super(connectionFactory);
+    }
+
+    @Override
+    protected void applyColumn($tc.getRowName() row, String cf, String col, byte[] value) throws IOException {
+        #set ($isFirst = true)
+        #foreach( $cc in $ccs )
+        #if ($isFirst)
+        if (cf.equals("$cc.getFamily()") && col.equals("$cc.getQualifier()")) {
+        #set ($isFirst = false)
+        #else
+        else if (cf.equals("$cc.getFamily()") && col.equals("$cc.getQualifier()")) {
+        #end
+            List<Class> typeArguments = Lists.newArrayList();
+            #foreach ( $typeArgument in $cc.getTypeArguments )
+            typeArguments.add(${typeArgument}.class)
+            #end
+
+            row.${cc.getSetterName()}(($cc.getTypeName())ByteUtils.fromBytes(
+                value,
+                ${cc.getDeclaredTypeName()}.class,
+                typeArguments
+            ));
+        }
+        #end
+    }
+
+    @Override
+    protected void applyRowKey($tc.getRowName() row, $rc.getTypeName() rowKey) {
+        if (row == null) {
+            return;
+        }
+
+        row.${rc.getSetterName()}(rowKey);
+    }
+
+    @Override
+    protected List<HColumnDef> getColumns() throws NoSuchFieldException {
+        return columns;
+    }
+
+    @Override
+    protected $tc.getRowName() getRowInstance() {
+        return new ${tc.getRowName()}();
+    }
+
+    @Override
+    protected Get toGet($rc.getTypeName() rowKey) throws JsonProcessingException {
+        return new Get(ByteUtils.toBytes(rowKey));
+    }
+
+    @Override
+    protected String getTableName() {
+        return "$tc.getTableName()";
+    }
+}
