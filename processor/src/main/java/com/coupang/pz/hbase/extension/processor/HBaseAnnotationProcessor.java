@@ -101,10 +101,44 @@ public class HBaseAnnotationProcessor extends AbstractProcessor{
             velocityContext.put("rc", rowKeyContext);
             velocityContext.put("ccs", columnContexts);
 
+            if(!generateConverter(velocityContext)) {
+                return true;
+            }
+
             return !generateTemplate(velocityContext);
         }
 
         return false;
+    }
+
+    private boolean generateConverter(VelocityContext velocityContext) {
+        Properties props = new Properties();
+        URL velocityPropertyUrl = this.getClass().getClassLoader().getResource("velocity.properties");
+        try {
+            props.load(velocityPropertyUrl.openStream());
+        } catch (IOException e) {
+            error(null, e.getMessage());
+            return false;
+        }
+
+        VelocityEngine ve = new VelocityEngine(props);
+        ve.init();
+
+        Template vt = ve.getTemplate("HBaseConverterImpl.vm");
+        JavaFileObject javaFileObject;
+        try {
+            TemplateContext tc = (TemplateContext)velocityContext.get("tc");
+            javaFileObject = filer.createSourceFile(tc.getPackageName() + "." + tc.getRowName() + "Converter");
+            note(null, "creating source file: %s", javaFileObject.toUri());
+            Writer writer = javaFileObject.openWriter();
+            vt.merge(velocityContext, writer);
+            writer.close();
+        } catch (IOException e) {
+            error(null, e.getMessage());
+            return false;
+        }
+
+        return true;
     }
 
     private boolean generateTemplate(VelocityContext velocityContext) {
@@ -120,7 +154,7 @@ public class HBaseAnnotationProcessor extends AbstractProcessor{
         VelocityEngine ve = new VelocityEngine(props);
         ve.init();
 
-        Template vt = ve.getTemplate("HBaseTemplateImplentation.vm");
+        Template vt = ve.getTemplate("HBaseTemplateImpl.vm");
         JavaFileObject javaFileObject;
         try {
             TemplateContext tc = (TemplateContext)velocityContext.get("tc");

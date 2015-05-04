@@ -1,0 +1,18 @@
+package ${tc.getPackageName()};
+
+import com.coupang.pz.hbase.extension.HBaseConverter;
+import com.coupang.pz.hbase.extension.HBaseTemplate;
+import com.coupang.pz.hbase.extension.connection.HBaseConnectionFactory;
+
+#set( $templateClassName = $tc.getRowName() + 'Template')
+#set( $converterClassName = $tc.getRowName() + 'Converter')
+public class $templateClassName extends HBaseTemplate<$tc.getRowName(), $rc.getTypeName()> {
+    public $templateClassName(HBaseConnectionFactory connectionFactory) {
+        super(connectionFactory);
+    }
+
+    @Override
+    protected HBaseConverter<$tc.getRowName(), $rc.getTypeName()> initConverter() {
+        return new ${converterClassName}();
+    }
+}
